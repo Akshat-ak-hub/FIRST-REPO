@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Gram Manchitra - State Selector</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/esri-leaflet"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
+    #map { height: 600px; }
+    #controls {
+      padding: 10px;
+      background: #f8f8f8;
+      border-bottom: 1px solid #ccc;
+    }
+    select {
+      padding: 6px;
+      font-size: 14px;
+    }
+    button {
+      padding: 6px 12px;
+      background: #2d6cdf;
+      color: white;
+      border: none;
+      cursor: pointer;
+      margin-left: 8px;
+    }
+    button:hover { background: #1e4ca1; }
+  </style>
+</head>
+<body>
+  <div id="controls">
+    <label for="stateSelect">Select State: </label>
+    <select id="stateSelect">
+      <option value="">--Choose--</option>
+      <option value="Madhya Pradesh">Madhya Pradesh</option>
+      <option value="Uttar Pradesh">Uttar Pradesh</option>
+      <option value="Bihar">Bihar</option>
+      <option value="Rajasthan">Rajasthan</option>
+      <option value="Maharashtra">Maharashtra</option>
+    </select>
+    <button onclick="showState()">Show</button>
+  </div>
+  <div id="map"></div>
+
+  <script>
+    // Initialize map
+    var map = L.map('map').setView([23.5, 78.5], 5); // India center
+
+    // Basemap
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    // Gram Manchitra layer (Madhya Pradesh example)
+    var gramLayer = L.esri.dynamicMapLayer({
+      url: "https://mapservice.gov.in/mapserviceserv176/rest/services/GramManchitra/MP/MapServer",
+      opacity: 0.6
+    }).addTo(map);
+
+    var resultLayer; // highlight state polygon
+
+    function showState() {
+      var stateName = document.getElementById("stateSelect").value;
+      if (!stateName) {
+        alert("Please select a state.");
+        return;
+      }
+
+      // Call Gram Manchitra API "find"
+      var url = "https://mapservice.gov.in/mapserviceserv176/rest/services/GramManchitra/MP/MapServer/find" +
+                "?searchText=" + encodeURIComponent(stateName) +
+                "&contains=true&returnGeometry=true&f=json";
+
+      fetch(url)
+        .then(res => res.json())
+        .then(data => {
+          if (!data.results || data.results.length === 0) {
+            alert("No boundary found for: " + stateName);
+            return;
+          }
+
+          if (resultLayer) map.removeLayer(resultLayer);
+
+          var geom = data.results[0].geometry;
+          var coords = geom.rings[0].map(pt => [pt[1], pt[0]]);
+
+          resultLayer = L.polygon(coords, {
+            color: "blue",
+            weight: 2,
+            fillOpacity: 0.15
+          }).addTo(map);
+
+          map.fitBounds(resultLayer.getBounds());
+        })
+        .catch(err => {
+          console.error("Error:", err);
+          alert("Failed to fetch state boundary.");
+        });
+    }
+  </script>
+</body>
+</html>

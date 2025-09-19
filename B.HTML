@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>India Map - Gram Manchitra Clone</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/esri-leaflet"></script>
+  <style>
+    body { margin: 0; }
+    #map { height: 100vh; }
+    #controls {
+      position: absolute;
+      top: 10px; left: 10px;
+      background: white; padding: 8px;
+      z-index: 1000; border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div id="controls">
+    <select id="stateSelect" onchange="loadStateBoundary()">
+      <option value="">-- Select State --</option>
+      <option value="Madhya Pradesh">Madhya Pradesh</option>
+      <option value="Uttar Pradesh">Uttar Pradesh</option>
+      <option value="Rajasthan">Rajasthan</option>
+      <option value="Bihar">Bihar</option>
+    </select>
+  </div>
+  <div id="map"></div>
+
+  <script>
+    // Initialize India-focused map
+    var map = L.map('map').setView([22.97, 78.65], 5);
+
+    // Bhuvan Topo map as basemap
+    L.tileLayer.wms("https://bhuvan-vec2.nrsc.gov.in/bhuvan/wms", {
+      layers: "india:india_topo",
+      format: "image/png",
+      transparent: false,
+      attribution: "Bhuvan ISRO"
+    }).addTo(map);
+
+    var boundaryLayer;
+
+    // Example: India state boundary API (replace with NIC MapServer for all India)
+    const stateBoundaryAPI = "https://mapservice.gov.in/mapserviceserv176/rest/services/India_Boundary/MapServer/0/query";
+
+    function loadStateBoundary() {
+      let state = document.getElementById("stateSelect").value;
+      if (!state) return;
+
+      if (boundaryLayer) map.removeLayer(boundaryLayer);
+
+      let url = stateBoundaryAPI +
+        "?where=STATE_NAME='" + encodeURIComponent(state) + "'" +
+        "&outFields=*&returnGeometry=true&f=geojson";
+
+      fetch(url)
+        .then(res => res.json())
+        .then(data => {
+          boundaryLayer = L.geoJSON(data, {
+            style: { color: "blue", weight: 2, fillOpacity: 0.05 }
+          }).addTo(map);
+          map.fitBounds(boundaryLayer.getBounds());
+        })
+        .catch(err => console.error("Boundary fetch error:", err));
+    }
+  </script>
+</body>
+</html>
